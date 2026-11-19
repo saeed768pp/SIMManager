@@ -30,6 +30,13 @@ jobs:
       - name: Build APK
         working-directory: project/SIMManager
         run: |
+          python3 -c '
+          from pathlib import Path
+          p = Path("app/build.gradle.kts")
+          text = p.read_text(encoding="utf-8")
+          lines = [l for l in text.splitlines() if "org.jetbrains.kotlin.android" not in l]
+          p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          '
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
