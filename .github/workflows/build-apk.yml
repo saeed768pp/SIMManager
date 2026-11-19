@@ -18,29 +18,58 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Extract project
         run: unzip -q SIMManager-source.zip -d project
 
-      - name: Build APK
+      - name: Fix AI Hallucinations (Versions)
         working-directory: project/SIMManager
         run: |
           python3 -c '
+          import os
           from pathlib import Path
-          p = Path("app/build.gradle.kts")
-          text = p.read_text(encoding="utf-8")
-          lines = [l for l in text.splitlines() if "org.jetbrains.kotlin.android" not in l]
-          p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          # 1. إصلاح إصدار Gradle الوهمي
+          wrapper = Path("gradle/wrapper/gradle-wrapper.properties")
+          if wrapper.exists():
+              text = wrapper.read_text()
+              text = text.replace("9.6.0", "8.7") # استبدال الإصدار الوهمي بإصدار حقيقي
+              wrapper.write_text(text)
+
+          # 2. إصلاح إصدارات Androidx الوهمية
+          gradle_kts = Path("app/build.gradle.kts")
+          if gradle_kts.exists():
+              text = gradle_kts.read_text()
+              text = text.replace("1.14.0", "1.9.0") # تصحيح activity-compose
+              text = text.replace("1.12.1", "1.6.8") # تصحيح compose ui
+              gradle_kts.write_text(text)
           '
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+
+      - name: Grant permission to gradlew
+        working-directory: project/SIMManager
+        run: chmod +x gradlew
+
+      - name: Build APK
+        working-directory: project/SIMManager
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: project/SIMManager/**/build/reports/**
 
       - name: Save APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: SIMManager-APK
