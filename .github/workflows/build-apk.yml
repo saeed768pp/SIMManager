@@ -24,9 +24,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Extract project
         run: unzip -q SIMManager-source.zip -d project
 
@@ -41,15 +38,15 @@ jobs:
           wrapper = Path("gradle/wrapper/gradle-wrapper.properties")
           if wrapper.exists():
               text = wrapper.read_text()
-              text = text.replace("9.6.0", "8.7") # استبدال الإصدار الوهمي بإصدار حقيقي
+              text = text.replace("9.6.0", "8.7") 
               wrapper.write_text(text)
 
           # 2. إصلاح إصدارات Androidx الوهمية
           gradle_kts = Path("app/build.gradle.kts")
           if gradle_kts.exists():
               text = gradle_kts.read_text()
-              text = text.replace("1.14.0", "1.9.0") # تصحيح activity-compose
-              text = text.replace("1.12.1", "1.6.8") # تصحيح compose ui
+              text = text.replace("1.14.0", "1.9.0") 
+              text = text.replace("1.12.1", "1.6.8") 
               gradle_kts.write_text(text)
           '
 
