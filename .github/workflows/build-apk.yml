@@ -27,30 +27,31 @@ jobs:
       - name: Extract project
         run: unzip -q SIMManager-source.zip -d project
 
-      - name: Show Project Structure
-        run: |
-          echo "=== شكل المجلدات بعد فك الضغط ==="
-          ls -la project/
-          echo "=== محتويات مجلد SIMManager (إذا كان موجود) ==="
-          ls -la project/SIMManager/ || echo "تحذير: مجلد SIMManager غير موجود!"
-
-      - name: Fix AI Hallucinations (Force Correct Versions)
+      - name: Patch Project (Fix AI Mistakes)
         working-directory: project/SIMManager
         run: |
-          echo "=== جاري تصحيح إصدارات الذكاء الاصطناعي ==="
+          python3 -c '
+          import re
+          from pathlib import Path
+
+          # 1. تصحيح إصدار Gradle الوهمي (9.6.0) إلى إصدار حقيقي (8.7)
+          wrapper = Path("gradle/wrapper/gradle-wrapper.properties")
+          if wrapper.exists():
+              text = wrapper.read_text()
+              text = re.sub(r"gradle-[0-9]+\.[0-9]+(\.[0-9]+)?-", "gradle-8.7-", text)
+              wrapper.write_text(text)
+
+          # 2. حذف الـ Kotlin Plugin الذي يسبب المشكلة بناءً على طلب الخطأ
+          files_to_patch = [Path("app/build.gradle.kts"), Path("build.gradle.kts")]
           
-          # 1. تصحيح إصدار Gradle الوهمي (9.6.0) في جميع ملفات المشروع
-          find . -type f \( -name "*.properties" -o -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/9.6.0/8.7/g' {} +
-          
-          # 2. تصحيح إصدار Kotlin لحل مشكلة (AgpWithBuiltInKotlinAppliedCheck)
-          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "1.9.22"/g' {} +
-          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/kotlin_version = "[^"]*"/kotlin_version = "1.9.22"/g' {} +
-          
-          # 3. تصحيح إصدارات Androidx الوهمية
-          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/1.14.0/1.9.0/g' {} +
-          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/1.12.1/1.6.8/g' {} +
-          
-          echo "=== تم التصحيح بنجاح ==="
+          for file in files_to_patch:
+              if file.exists():
+                  text = file.read_text()
+                  # مسح أي سطر يحتوي على org.jetbrains.kotlin.android
+                  lines = [l for l in text.splitlines() if "org.jetbrains.kotlin.android" not in l]
+                  file.write_text("\n".join(lines) + "\n")
+                  print(f"تم تنظيف الملف: {file}")
+          '
 
       - name: Grant permission to gradlew
         working-directory: project/SIMManager
