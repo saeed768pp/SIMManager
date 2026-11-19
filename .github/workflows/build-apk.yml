@@ -27,28 +27,30 @@ jobs:
       - name: Extract project
         run: unzip -q SIMManager-source.zip -d project
 
-      - name: Fix AI Hallucinations (Versions)
+      - name: Show Project Structure
+        run: |
+          echo "=== شكل المجلدات بعد فك الضغط ==="
+          ls -la project/
+          echo "=== محتويات مجلد SIMManager (إذا كان موجود) ==="
+          ls -la project/SIMManager/ || echo "تحذير: مجلد SIMManager غير موجود!"
+
+      - name: Fix AI Hallucinations (Force Correct Versions)
         working-directory: project/SIMManager
         run: |
-          python3 -c '
-          import os
-          from pathlib import Path
-
-          # 1. إصلاح إصدار Gradle الوهمي
-          wrapper = Path("gradle/wrapper/gradle-wrapper.properties")
-          if wrapper.exists():
-              text = wrapper.read_text()
-              text = text.replace("9.6.0", "8.7") 
-              wrapper.write_text(text)
-
-          # 2. إصلاح إصدارات Androidx الوهمية
-          gradle_kts = Path("app/build.gradle.kts")
-          if gradle_kts.exists():
-              text = gradle_kts.read_text()
-              text = text.replace("1.14.0", "1.9.0") 
-              text = text.replace("1.12.1", "1.6.8") 
-              gradle_kts.write_text(text)
-          '
+          echo "=== جاري تصحيح إصدارات الذكاء الاصطناعي ==="
+          
+          # 1. تصحيح إصدار Gradle الوهمي (9.6.0) في جميع ملفات المشروع
+          find . -type f \( -name "*.properties" -o -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/9.6.0/8.7/g' {} +
+          
+          # 2. تصحيح إصدار Kotlin لحل مشكلة (AgpWithBuiltInKotlinAppliedCheck)
+          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "1.9.22"/g' {} +
+          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/kotlin_version = "[^"]*"/kotlin_version = "1.9.22"/g' {} +
+          
+          # 3. تصحيح إصدارات Androidx الوهمية
+          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/1.14.0/1.9.0/g' {} +
+          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/1.12.1/1.6.8/g' {} +
+          
+          echo "=== تم التصحيح بنجاح ==="
 
       - name: Grant permission to gradlew
         working-directory: project/SIMManager
